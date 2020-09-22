@@ -1,6 +1,10 @@
-const { mat4, mat3, vec2, vec3, vec4, quat } = glMatrix;
+import { mat4, mat3, vec2, vec3, vec4, quat } from 'gl-matrix';
+import roughWetAlbedo from './resources/rough-wet-cobble-albedo-1024.png';
+import roughWetNormal from './resources/rough-wet-cobble-normal-1024.jpg';
+import wornBumpyRockAlbedo from './resources/worn-bumpy-rock-albedo-1024.png';
+import wornBumpyRockNormal from './resources/worn-bumpy-rock-normal-1024.jpg';
 
-let GL = null;
+let GL: any = null;
 
 const _OPAQUE_VS = `#version 300 es
 precision highp float;
@@ -26,7 +30,6 @@ void main(void) {
   vUV0 = uv0;
 }
 `;
-
 
 const _OPAQUE_FS = `#version 300 es
 precision highp float;
@@ -54,7 +57,6 @@ void main(void) {
 }
 `;
 
-
 const _QUAD_VS = `#version 300 es
 precision highp float;
 
@@ -70,7 +72,6 @@ void main(void) {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
-
 
 const _QUAD_FS = `#version 300 es
 precision highp float;
@@ -172,7 +173,6 @@ void main(void) {
 }
 `;
 
-
 const _QUAD_COLOUR_FS = `#version 300 es
 precision highp float;
 
@@ -218,7 +218,6 @@ void main(void) {
 }
 `;
 
-
 const _SIMPLE_FS = `#version 300 es
 precision highp float;
 
@@ -246,13 +245,22 @@ void main(void) {
 `;
 
 class Shader {
-  constructor(vsrc, fsrc, defines) {
+  private _defines: any;
+  private _vsSource: any;
+  private _fsSource: any;
+  private _vsProgram: any;
+  private _fsProgram: any;
+  private _shader: any;
+  private attribs: any;
+  private uniforms: any;
+
+  constructor(vsrc: string, fsrc: string, defines?: any) {
     defines = defines || [];
 
     this._Init(vsrc, fsrc, defines);
   }
 
-  _Init(vsrc, fsrc, defines) {
+  _Init(vsrc: string, fsrc: string, defines: any) {
     this._defines = defines;
 
     vsrc = this._ModifySourceWithDefines(vsrc, defines);
@@ -268,17 +276,17 @@ class Shader {
     GL.attachShader(this._shader, this._vsProgram);
     GL.attachShader(this._shader, this._fsProgram);
     GL.linkProgram(this._shader);
-  
+
     if (!GL.getProgramParameter(this._shader, GL.LINK_STATUS)) {
       return null;
     }
-  
+
     this.attribs = {
       positions: GL.getAttribLocation(this._shader, 'position'),
       normals: GL.getAttribLocation(this._shader, 'normal'),
       tangents: GL.getAttribLocation(this._shader, 'tangent'),
       uvs: GL.getAttribLocation(this._shader, 'uv0'),
-      colours: GL.getAttribLocation(this._shader, 'colour'),
+      colours: GL.getAttribLocation(this._shader, 'colour')
     };
     this.uniforms = {
       projectionMatrix: {
@@ -287,75 +295,75 @@ class Shader {
       },
       modelViewMatrix: {
         type: 'mat4',
-        location: GL.getUniformLocation(this._shader, 'modelViewMatrix'),
+        location: GL.getUniformLocation(this._shader, 'modelViewMatrix')
       },
       modelMatrix: {
         type: 'mat4',
-        location: GL.getUniformLocation(this._shader, 'modelMatrix'),
+        location: GL.getUniformLocation(this._shader, 'modelMatrix')
       },
       normalMatrix: {
         type: 'mat3',
-        location: GL.getUniformLocation(this._shader, 'normalMatrix'),
+        location: GL.getUniformLocation(this._shader, 'normalMatrix')
       },
       resolution: {
         type: 'vec4',
-        location: GL.getUniformLocation(this._shader, 'resolution'),
+        location: GL.getUniformLocation(this._shader, 'resolution')
       },
       lightColour: {
         type: 'vec3',
-        location: GL.getUniformLocation(this._shader, 'lightColour'),
+        location: GL.getUniformLocation(this._shader, 'lightColour')
       },
       lightDirection: {
         type: 'vec3',
-        location: GL.getUniformLocation(this._shader, 'lightDirection'),
+        location: GL.getUniformLocation(this._shader, 'lightDirection')
       },
       lightPosition: {
         type: 'vec3',
-        location: GL.getUniformLocation(this._shader, 'lightPosition'),
+        location: GL.getUniformLocation(this._shader, 'lightPosition')
       },
       lightAttenuation: {
         type: 'vec3',
-        location: GL.getUniformLocation(this._shader, 'lightAttenuation'),
+        location: GL.getUniformLocation(this._shader, 'lightAttenuation')
       },
       cameraPosition: {
         type: 'vec3',
-        location: GL.getUniformLocation(this._shader, 'cameraPosition'),
+        location: GL.getUniformLocation(this._shader, 'cameraPosition')
       },
       diffuseTexture: {
         type: 'texture',
-        location: GL.getUniformLocation(this._shader, 'diffuseTexture'),
+        location: GL.getUniformLocation(this._shader, 'diffuseTexture')
       },
       normalTexture: {
         type: 'texture',
-        location: GL.getUniformLocation(this._shader, 'normalTexture'),
+        location: GL.getUniformLocation(this._shader, 'normalTexture')
       },
       gBuffer_Light: {
         type: 'texture',
-        location: GL.getUniformLocation(this._shader, 'gBuffer_Light'),
+        location: GL.getUniformLocation(this._shader, 'gBuffer_Light')
       },
       gBuffer_Colour: {
         type: 'texture',
-        location: GL.getUniformLocation(this._shader, 'gBuffer_Colour'),
+        location: GL.getUniformLocation(this._shader, 'gBuffer_Colour')
       },
       gBuffer_Normal: {
         type: 'texture',
-        location: GL.getUniformLocation(this._shader, 'gBuffer_Normal'),
+        location: GL.getUniformLocation(this._shader, 'gBuffer_Normal')
       },
       gBuffer_Position: {
         type: 'texture',
-        location: GL.getUniformLocation(this._shader, 'gBuffer_Position'),
+        location: GL.getUniformLocation(this._shader, 'gBuffer_Position')
       },
       gQuadTexture: {
         type: 'texture',
-        location: GL.getUniformLocation(this._shader, 'gQuadTexture'),
+        location: GL.getUniformLocation(this._shader, 'gQuadTexture')
       }
     };
   }
 
-  _ModifySourceWithDefines(src, defines) {
+  _ModifySourceWithDefines(src: any, defines: any) {
     const lines = src.split('\n');
 
-    const defineStrings = defines.map(d => '#define ' + d);
+    const defineStrings = defines.map((d: any) => '#define ' + d);
 
     lines.splice(3, 0, defineStrings);
 
@@ -364,17 +372,17 @@ class Shader {
 
   _Load(type, source) {
     const shader = GL.createShader(type);
-  
+
     GL.shaderSource(shader, source);
     GL.compileShader(shader);
-  
+
     if (!GL.getShaderParameter(shader, GL.COMPILE_STATUS)) {
       console.log(GL.getShaderInfoLog(shader));
       console.log(source);
       GL.deleteShader(shader);
       return null;
     }
-  
+
     return shader;
   }
 
@@ -383,8 +391,11 @@ class Shader {
   }
 }
 
-
 class ShaderInstance {
+  private _shaderData;
+  private _uniforms;
+  private _attribs;
+
   constructor(shader) {
     this._shaderData = shader;
     this._uniforms = {};
@@ -395,7 +406,7 @@ class ShaderInstance {
         value: null
       };
     }
-    this._attribs = {...shader.attribs};
+    this._attribs = { ...shader.attribs };
   }
 
   SetMat4(name, m) {
@@ -452,10 +463,11 @@ class ShaderInstance {
   }
 }
 
-
 class Texture {
-  constructor() {
-  }
+  private _name;
+  private _texture;
+
+  constructor() {}
 
   Load(src) {
     this._name = src;
@@ -466,15 +478,13 @@ class Texture {
   _Load(src) {
     this._texture = GL.createTexture();
     GL.bindTexture(GL.TEXTURE_2D, this._texture);
-    GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA,
-                  1, 1, 0, GL.RGBA, GL.UNSIGNED_BYTE,
-                  new Uint8Array([0, 0, 255, 255]));
+    GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, 1, 1, 0, GL.RGBA, GL.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
 
     const img = new Image();
     img.src = src;
     img.onload = () => {
       GL.bindTexture(GL.TEXTURE_2D, this._texture);
-      GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, GL.RGBA, GL.UNSIGNED_BYTE, img);  
+      GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, GL.RGBA, GL.UNSIGNED_BYTE, img);
       GL.generateMipmap(GL.TEXTURE_2D);
       GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR_MIPMAP_LINEAR);
       GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
@@ -495,12 +505,13 @@ class Texture {
   }
 }
 
-
 class Mesh {
+  private _buffers;
+
   constructor() {
     this._buffers = {};
 
-    this._OnInit();
+    (this as any)._OnInit();
   }
 
   _BufferData(info, name) {
@@ -541,9 +552,14 @@ class Mesh {
   }
 }
 
-
 class MeshInstance {
-  constructor(mesh, shaders, shaderParams) {
+  private _mesh;
+  private _shaders;
+  private _position;
+  private _scale;
+  private _rotation;
+
+  constructor(mesh, shaders, shaderParams?) {
     this._mesh = mesh;
     this._shaders = shaders;
 
@@ -552,7 +568,7 @@ class MeshInstance {
       const s = shaders[sk];
       for (let k in shaderParams) {
         s.SetTexture(k, shaderParams[k]);
-      }  
+      }
     }
 
     this._position = vec3.create();
@@ -578,8 +594,7 @@ class MeshInstance {
 
   Bind(constants, pass) {
     const modelMatrix = mat4.create();
-    mat4.fromRotationTranslationScale(
-        modelMatrix, this._rotation, this._position, this._scale);
+    mat4.fromRotationTranslationScale(modelMatrix, this._rotation, this._position, this._scale);
 
     // TODO View matrix
     const viewMatrix = constants['viewMatrix'];
@@ -606,7 +621,6 @@ class MeshInstance {
   }
 }
 
-
 class Box extends Mesh {
   constructor() {
     super();
@@ -615,163 +629,331 @@ class Box extends Mesh {
   _OnInit() {
     const positions = [
       // Front face
-      -1.0, -1.0,  1.0,
-      1.0, -1.0,  1.0,
-      1.0,  1.0,  1.0,
-      -1.0,  1.0,  1.0,
+      -1.0,
+      -1.0,
+      1.0,
+      1.0,
+      -1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      -1.0,
+      1.0,
+      1.0,
 
       // Back face
-      -1.0, -1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      1.0,
+      -1.0,
+      1.0,
+      1.0,
+      -1.0,
+      1.0,
+      -1.0,
+      -1.0,
 
       // Top face
-      -1.0,  1.0, -1.0,
-      -1.0,  1.0,  1.0,
-      1.0,  1.0,  1.0,
-      1.0,  1.0, -1.0,
+      -1.0,
+      1.0,
+      -1.0,
+      -1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      -1.0,
 
       // Bottom face
-      -1.0, -1.0, -1.0,
-      1.0, -1.0, -1.0,
-      1.0, -1.0,  1.0,
-      -1.0, -1.0,  1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      1.0,
+      -1.0,
+      -1.0,
+      1.0,
+      -1.0,
+      1.0,
+      -1.0,
+      -1.0,
+      1.0,
 
       // Right face
-      1.0, -1.0, -1.0,
-      1.0,  1.0, -1.0,
-      1.0,  1.0,  1.0,
-      1.0, -1.0,  1.0,
+      1.0,
+      -1.0,
+      -1.0,
+      1.0,
+      1.0,
+      -1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      -1.0,
+      1.0,
 
       // Left face
-      -1.0, -1.0, -1.0,
-      -1.0, -1.0,  1.0,
-      -1.0,  1.0,  1.0,
-      -1.0,  1.0, -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      1.0,
+      -1.0,
+      1.0,
+      1.0,
+      -1.0,
+      1.0,
+      -1.0
     ];
 
     const uvs = [
       // Front face
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
 
       // Back face
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
 
       // Top face
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
 
       // Bottom face
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
 
       // Right face
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
 
       // Left face
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0
     ];
 
     const normals = [
       // Front face
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
 
       // Back face
-      0.0, 0.0, -1.0,
-      0.0, 0.0, -1.0,
-      0.0, 0.0, -1.0,
-      0.0, 0.0, -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
 
       // Top face
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
 
       // Bottom face
-      0.0, -1.0, 0.0,
-      0.0, -1.0, 0.0,
-      0.0, -1.0, 0.0,
-      0.0, -1.0, 0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
 
       // Right face
-      1.0, 0.0, 0.0,
-      1.0, 0.0, 0.0,
-      1.0, 0.0, 0.0,
-      1.0, 0.0, 0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
 
       // Left face
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0
     ];
 
     const tangents = [
       // Front face
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
 
       // Back face
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
 
       // Top face
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
 
       // Bottom face
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
 
       // Right face
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
 
       // Left face
-      0.0, 0.0, -1.0,
-      0.0, 0.0, -1.0,
-      0.0, 0.0, -1.0,
-      0.0, 0.0, -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      -1.0
     ];
 
     const faceColors = [
-      [1.0,  1.0,  1.0,  1.0],    // Front face: white
-      [1.0,  0.0,  0.0,  1.0],    // Back face: red
-      [0.0,  1.0,  0.0,  1.0],    // Top face: green
-      [0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
-      [1.0,  1.0,  0.0,  1.0],    // Right face: yellow
-      [1.0,  0.0,  1.0,  1.0],    // Left face: purple
+      [1.0, 1.0, 1.0, 1.0], // Front face: white
+      [1.0, 0.0, 0.0, 1.0], // Back face: red
+      [0.0, 1.0, 0.0, 1.0], // Top face: green
+      [0.0, 0.0, 1.0, 1.0], // Bottom face: blue
+      [1.0, 1.0, 0.0, 1.0], // Right face: yellow
+      [1.0, 0.0, 1.0, 1.0] // Left face: purple
     ];
 
     // Convert the array of colors into a table for all the vertices.
@@ -786,20 +968,50 @@ class Box extends Mesh {
     }
 
     const indices = [
-      0,  1,  2,      0,  2,  3,    // front
-      4,  5,  6,      4,  6,  7,    // back
-      8,  9,  10,     8,  10, 11,   // top
-      12, 13, 14,     12, 14, 15,   // bottom
-      16, 17, 18,     16, 18, 19,   // right
-      20, 21, 22,     20, 22, 23,   // left
+      0,
+      1,
+      2,
+      0,
+      2,
+      3, // front
+      4,
+      5,
+      6,
+      4,
+      6,
+      7, // back
+      8,
+      9,
+      10,
+      8,
+      10,
+      11, // top
+      12,
+      13,
+      14,
+      12,
+      14,
+      15, // bottom
+      16,
+      17,
+      18,
+      16,
+      18,
+      19, // right
+      20,
+      21,
+      22,
+      20,
+      22,
+      23 // left
     ];
 
-    this._BufferData({size: 3, data: positions}, 'positions');
-    this._BufferData({size: 3, data: normals}, 'normals');
-    this._BufferData({size: 3, data: tangents}, 'tangents');
-    this._BufferData({size: 4, data: colours}, 'colours');
-    this._BufferData({size: 2, data: uvs}, 'uvs');
-    this._BufferData({data: indices}, 'index');
+    this._BufferData({ size: 3, data: positions }, 'positions');
+    this._BufferData({ size: 3, data: normals }, 'normals');
+    this._BufferData({ size: 3, data: tangents }, 'tangents');
+    this._BufferData({ size: 4, data: colours }, 'colours');
+    this._BufferData({ size: 2, data: uvs }, 'uvs');
+    this._BufferData({ data: indices }, 'index');
   }
 }
 
@@ -809,49 +1021,31 @@ class Quad extends Mesh {
   }
 
   _OnInit() {
-    const positions = [
-      -0.5, -0.5, 1.0,
-      0.5, -0.5, 1.0,
-      0.5, 0.5, 1.0,
-      -0.5, 0.5, 1.0,
-    ];
+    const positions = [-0.5, -0.5, 1.0, 0.5, -0.5, 1.0, 0.5, 0.5, 1.0, -0.5, 0.5, 1.0];
 
-    const normals = [
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
-      0.0, 0.0, 1.0,
-    ];
+    const normals = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0];
 
-    const tangents = [
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-      -1.0, 0.0, 0.0,
-    ];
+    const tangents = [-1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0];
 
-    const uvs = [
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
-    ];
+    const uvs = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
 
-    const indices = [
-      0, 1, 2,
-      0, 2, 3,
-    ];
+    const indices = [0, 1, 2, 0, 2, 3];
 
-    this._BufferData({size: 3, data: positions}, 'positions');
-    this._BufferData({size: 3, data: normals}, 'normals');
-    this._BufferData({size: 3, data: tangents}, 'tangents');
-    this._BufferData({size: 2, data: uvs}, 'uvs');
-    this._BufferData({data: indices}, 'index');
+    this._BufferData({ size: 3, data: positions }, 'positions');
+    this._BufferData({ size: 3, data: normals }, 'normals');
+    this._BufferData({ size: 3, data: tangents }, 'tangents');
+    this._BufferData({ size: 2, data: uvs }, 'uvs');
+    this._BufferData({ data: indices }, 'index');
   }
 }
 
-
 class Camera {
+  protected _position;
+  protected _target;
+  protected _viewMatrix;
+  protected _cameraMatrix;
+  protected _projectionMatrix;
+
   constructor() {
     this._position = vec3.create();
     this._target = vec3.create();
@@ -878,8 +1072,12 @@ class Camera {
   }
 }
 
-
 class PerspectiveCamera extends Camera {
+  private _fov;
+  private _aspect;
+  private _zNear;
+  private _zFar;
+
   constructor(fov, aspect, zNear, zFar) {
     super();
 
@@ -888,8 +1086,8 @@ class PerspectiveCamera extends Camera {
     this._aspect = aspect;
     this._zNear = zNear;
     this._zFar = zFar;
-  
-    mat4.perspective(this._projectionMatrix, fov * Math.PI / 180.0, aspect, zNear, zFar);
+
+    mat4.perspective(this._projectionMatrix, (fov * Math.PI) / 180.0, aspect, zNear, zFar);
   }
 
   GetUp() {
@@ -909,28 +1107,26 @@ class PerspectiveCamera extends Camera {
   }
 }
 
-
 class OrthoCamera extends Camera {
   constructor(l, r, b, t, n, f) {
     super();
 
     this._projectionMatrix = mat4.create();
-  
+
     mat4.ortho(this._projectionMatrix, l, r, b, t, n, f);
   }
 }
 
-
 class Light {
-  constructor() {
-  }
+  constructor() {}
 
-  UpdateConstants() {
-  }
+  UpdateConstants(constants?) {}
 }
 
-
 class DirectionalLight extends Light {
+  private _colour;
+  private _direction;
+
   constructor() {
     super();
 
@@ -958,6 +1154,10 @@ class DirectionalLight extends Light {
 }
 
 class PointLight extends Light {
+  private _colour;
+  private _position;
+  private _attenuation;
+
   constructor() {
     super();
 
@@ -989,8 +1189,23 @@ class PointLight extends Light {
   }
 }
 
-
 class Renderer {
+  private _canvas;
+  private _constants;
+  private _textures;
+  private _shaders;
+  private _camera;
+  private _postCamera;
+  private _meshes;
+  private _lights;
+  private _quadDirectional;
+  private _quadPoint;
+  private _quadColour;
+  private _depthBuffer;
+  private _normalBuffer;
+  private _positionBuffer;
+  private _lightBuffer;
+
   constructor() {
     this._Init();
   }
@@ -1003,30 +1218,25 @@ class Renderer {
     GL = this._canvas.getContext('webgl2');
 
     if (GL === null) {
-      alert("Unable to initialize WebGL. Your browser or machine may not support it.");
+      alert('Unable to initialize WebGL. Your browser or machine may not support it.');
       return;
     }
 
     this._constants = {};
 
     this._textures = {};
-    this._textures['test-diffuse'] = new Texture().Load('./resources/rough-wet-cobble-albedo-1024.png');
-    this._textures['test-normal'] = new Texture().Load('./resources/rough-wet-cobble-normal-1024.jpg');
-    this._textures['worn-bumpy-rock-albedo'] = new Texture().Load(
-        './resources/worn-bumpy-rock-albedo-1024.png');
-    this._textures['worn-bumpy-rock-normal'] = new Texture().Load(
-        './resources/worn-bumpy-rock-normal-1024.jpg');
+    this._textures['test-diffuse'] = new Texture().Load(roughWetAlbedo);
+    this._textures['test-normal'] = new Texture().Load(roughWetNormal);
+    this._textures['worn-bumpy-rock-albedo'] = new Texture().Load(wornBumpyRockAlbedo);
+    this._textures['worn-bumpy-rock-normal'] = new Texture().Load(wornBumpyRockNormal);
 
     this._shaders = {};
     this._shaders['z'] = new Shader(_SIMPLE_VS, _SIMPLE_FS);
     this._shaders['default'] = new Shader(_OPAQUE_VS, _OPAQUE_FS);
 
-    this._shaders['post-quad-colour'] = new Shader(
-        _QUAD_COLOUR_VS, _QUAD_COLOUR_FS);
-    this._shaders['post-quad-directional'] = new Shader(
-        _QUAD_VS, _QUAD_FS, ['_LIGHT_TYPE_DIRECTIONAL']);
-    this._shaders['post-quad-point'] = new Shader(
-        _QUAD_VS, _QUAD_FS, ['_LIGHT_TYPE_POINT']);
+    this._shaders['post-quad-colour'] = new Shader(_QUAD_COLOUR_VS, _QUAD_COLOUR_FS);
+    this._shaders['post-quad-directional'] = new Shader(_QUAD_VS, _QUAD_FS, ['_LIGHT_TYPE_DIRECTIONAL']);
+    this._shaders['post-quad-point'] = new Shader(_QUAD_VS, _QUAD_FS, ['_LIGHT_TYPE_POINT']);
 
     this._camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1.0, 1000.0);
     this._camera.SetPosition(0, 20, 10);
@@ -1037,19 +1247,15 @@ class Renderer {
     this._meshes = [];
     this._lights = [];
 
-    this._quadDirectional = new MeshInstance(
-        new Quad(),
-        {light: new ShaderInstance(this._shaders['post-quad-directional'])});
+    this._quadDirectional = new MeshInstance(new Quad(), {
+      light: new ShaderInstance(this._shaders['post-quad-directional'])
+    });
     this._quadDirectional.SetPosition(0.5, 0.5, -10.0);
 
-    this._quadPoint = new MeshInstance(
-        new Quad(),
-        {light: new ShaderInstance(this._shaders['post-quad-point'])});
+    this._quadPoint = new MeshInstance(new Quad(), { light: new ShaderInstance(this._shaders['post-quad-point']) });
     this._quadPoint.SetPosition(0.5, 0.5, -10.0);
 
-    this._quadColour = new MeshInstance(
-        new Quad(),
-        {colour: new ShaderInstance(this._shaders['post-quad-colour'])});
+    this._quadColour = new MeshInstance(new Quad(), { colour: new ShaderInstance(this._shaders['post-quad-colour']) });
     this._quadColour.SetPosition(0.5, 0.5, -10.0);
 
     this._InitGBuffer();
@@ -1063,44 +1269,33 @@ class Renderer {
 
     this._depthBuffer = GL.createRenderbuffer();
     GL.bindRenderbuffer(GL.RENDERBUFFER, this._depthBuffer);
-    GL.renderbufferStorage(
-        GL.RENDERBUFFER,
-        GL.DEPTH_COMPONENT24,
-        window.innerWidth, window.innerHeight);
+    GL.renderbufferStorage(GL.RENDERBUFFER, GL.DEPTH_COMPONENT24, window.innerWidth, window.innerHeight);
     GL.bindRenderbuffer(GL.RENDERBUFFER, null);
 
     this._normalBuffer = GL.createTexture();
     GL.bindTexture(GL.TEXTURE_2D, this._normalBuffer);
-    GL.texImage2D(
-        GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight,
-        0, GL.RGBA, GL.FLOAT, null);  
+    GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight, 0, GL.RGBA, GL.FLOAT, null);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
-      GL.bindTexture(GL.TEXTURE_2D, null);
+    GL.bindTexture(GL.TEXTURE_2D, null);
 
     this._positionBuffer = GL.createTexture();
     GL.bindTexture(GL.TEXTURE_2D, this._positionBuffer);
-    GL.texImage2D(
-        GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight,
-        0, GL.RGBA, GL.FLOAT, null);  
+    GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight, 0, GL.RGBA, GL.FLOAT, null);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
     GL.bindTexture(GL.TEXTURE_2D, null);
 
     this._lightBuffer = GL.createTexture();
     GL.bindTexture(GL.TEXTURE_2D, this._lightBuffer);
-    GL.texImage2D(
-        GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight,
-        0, GL.RGBA, GL.FLOAT, null);  
+    GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight, 0, GL.RGBA, GL.FLOAT, null);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
     GL.bindTexture(GL.TEXTURE_2D, null);
 
     this._colourBuffer = GL.createTexture();
     GL.bindTexture(GL.TEXTURE_2D, this._colourBuffer);
-    GL.texImage2D(
-        GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight,
-        0, GL.RGBA, GL.FLOAT, null);  
+    GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA32F, window.innerWidth, window.innerHeight, 0, GL.RGBA, GL.FLOAT, null);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
     GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
     GL.bindTexture(GL.TEXTURE_2D, null);
@@ -1108,28 +1303,21 @@ class Renderer {
     // Create the FBO's for each pass
     this._zFBO = GL.createFramebuffer();
     GL.bindFramebuffer(GL.FRAMEBUFFER, this._zFBO);
-    GL.framebufferRenderbuffer(
-        GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, this._depthBuffer);
-    GL.framebufferTexture2D(
-        GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, this._normalBuffer, 0);
-    GL.framebufferTexture2D(
-        GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT1, GL.TEXTURE_2D, this._positionBuffer, 0);
+    GL.framebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, this._depthBuffer);
+    GL.framebufferTexture2D(GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, this._normalBuffer, 0);
+    GL.framebufferTexture2D(GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT1, GL.TEXTURE_2D, this._positionBuffer, 0);
     GL.bindFramebuffer(GL.FRAMEBUFFER, null);
 
     this._lightFBO = GL.createFramebuffer();
     GL.bindFramebuffer(GL.FRAMEBUFFER, this._lightFBO);
-    GL.framebufferRenderbuffer(
-        GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, this._depthBuffer);
-    GL.framebufferTexture2D(
-        GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, this._lightBuffer, 0);
+    GL.framebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, this._depthBuffer);
+    GL.framebufferTexture2D(GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, this._lightBuffer, 0);
     GL.bindFramebuffer(GL.FRAMEBUFFER, null);
 
     this._colourFBO = GL.createFramebuffer();
     GL.bindFramebuffer(GL.FRAMEBUFFER, this._colourFBO);
-    GL.framebufferRenderbuffer(
-        GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, this._depthBuffer);
-    GL.framebufferTexture2D(
-        GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, this._colourBuffer, 0);
+    GL.framebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, this._depthBuffer);
+    GL.framebufferTexture2D(GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, this._colourBuffer, 0);
     GL.bindFramebuffer(GL.FRAMEBUFFER, null);
 
     // GROSS
@@ -1146,6 +1334,15 @@ class Renderer {
     this._colourTexture._texture = this._colourBuffer;
   }
 
+  private _colourBuffer;
+  private _lightFBO;
+  private _colourFBO;
+  private _normalTexture;
+  private _positionTexture;
+  private _lightTexture;
+  private _colourTexture;
+  private _zFBO;
+
   CreateMeshInstance(mesh, shaderParams) {
     const params = {};
     for (let k in shaderParams.params) {
@@ -1153,11 +1350,13 @@ class Renderer {
     }
 
     const m = new MeshInstance(
-        mesh,
-        {
-          z: new ShaderInstance(this._shaders['z']),
-          colour: new ShaderInstance(this._shaders[shaderParams.shader])
-        }, params);
+      mesh,
+      {
+        z: new ShaderInstance(this._shaders['z']),
+        colour: new ShaderInstance(this._shaders[shaderParams.shader])
+      },
+      params
+    );
 
     this._meshes.push(m);
 
@@ -1196,9 +1395,8 @@ class Renderer {
     const viewMatrix = this._camera._viewMatrix;
     const projectionMatrix = this._camera._projectionMatrix;
 
-    const _TransformToScreenSpace = (p) => {
-      const screenPos = vec4.fromValues(
-          p[0], p[1], p[2], 1.0);
+    const _TransformToScreenSpace = p => {
+      const screenPos = vec4.fromValues(p[0], p[1], p[2], 1.0);
 
       vec4.transformMat4(screenPos, screenPos, projectionMatrix);
 
@@ -1208,7 +1406,7 @@ class Renderer {
       return screenPos;
     };
 
-    const lightRadius = (light._attenuation[0] + light._attenuation[1]);
+    const lightRadius = light._attenuation[0] + light._attenuation[1];
     const lightDistance = vec3.distance(this._camera._position, light._position);
 
     if (lightDistance < lightRadius) {
@@ -1223,12 +1421,11 @@ class Renderer {
       vec3.add(rightPos, rightPos, vec3.fromValues(lightRadius, 0, 0));
       vec3.add(upPos, upPos, vec3.fromValues(0, -lightRadius, 0));
 
-      const center = _TransformToScreenSpace(light._position);    
-      const up = _TransformToScreenSpace(upPos);
-      const right = _TransformToScreenSpace(rightPos);
+      const center: any = _TransformToScreenSpace(light._position);
+      const up: any = _TransformToScreenSpace(upPos);
+      const right: any = _TransformToScreenSpace(rightPos);
 
-      const radius = 2 * Math.max(
-          vec2.distance(center, up), vec2.distance(center, right));
+      const radius = 2 * Math.max(vec2.distance(center, up), vec2.distance(center, right));
 
       quad.SetPosition(center[0], center[1], -10);
       quad.Scale(radius, radius, 1);
@@ -1236,8 +1433,7 @@ class Renderer {
   }
 
   Render(timeElapsed) {
-    this._constants['resolution'] = vec4.fromValues(
-        window.innerWidth, window.innerHeight, 0, 0);
+    this._constants['resolution'] = vec4.fromValues(window.innerWidth, window.innerHeight, 0, 0);
     this._camera.UpdateConstants(this._constants);
 
     this._constants['gBuffer_Normal'] = null;
@@ -1338,6 +1534,11 @@ class Renderer {
 }
 
 class LightPrepassDemo {
+  private _renderer;
+  private _previousRAF;
+  private _lights;
+  private _meshes;
+
   constructor() {
     this._Initialize();
   }
@@ -1345,9 +1546,13 @@ class LightPrepassDemo {
   _Initialize() {
     this._renderer = new Renderer();
 
-    window.addEventListener('resize', () => {
-      this._OnWindowResize();
-    }, false);
+    window.addEventListener(
+      'resize',
+      () => {
+        this._OnWindowResize();
+      },
+      false
+    );
 
     this._Init();
 
@@ -1373,20 +1578,17 @@ class LightPrepassDemo {
       const v = vec3.fromValues(Math.random(), Math.random(), Math.random());
       vec3.normalize(v, v);
 
-      const p = vec3.fromValues(
-        (Math.random() * 2 - 1) * 10,
-        3,
-        -Math.random() * 10 - 10);
+      const p = vec3.fromValues((Math.random() * 2 - 1) * 10, 3, -Math.random() * 10 - 10);
 
       l.SetColour(v[0], v[1], v[2]);
       l.SetPosition(p[0], p[1], p[2]);
       l.SetRadius(4, 1);
 
       this._lights.push({
-          light: l,
-          position: p,
-          acc: Math.random() * 10.0,
-          accSpeed: Math.random() * 0.5 + 0.5,
+        light: l,
+        position: p,
+        acc: Math.random() * 10.0,
+        accSpeed: Math.random() * 0.5 + 0.5
       });
     }
   }
@@ -1394,39 +1596,35 @@ class LightPrepassDemo {
   _CreateMeshes() {
     this._meshes = [];
 
-    let m = this._renderer.CreateMeshInstance(
-        new Quad(),
-        {
-          shader: 'default',
-          params: {
-            diffuseTexture: 'worn-bumpy-rock-albedo',
-            normalTexture: 'worn-bumpy-rock-normal',
-          }
-        });
+    let m = this._renderer.CreateMeshInstance(new Quad(), {
+      shader: 'default',
+      params: {
+        diffuseTexture: 'worn-bumpy-rock-albedo',
+        normalTexture: 'worn-bumpy-rock-normal'
+      }
+    });
     m.SetPosition(0, -2, -10);
     m.RotateX(-Math.PI * 0.5);
     m.Scale(50, 50, 1);
 
     for (let x = -5; x < 5; x++) {
       for (let y = 0; y < 20; y++) {
-        let m = this._renderer.CreateMeshInstance(
-            new Box(),
-            {
-              shader: 'default',
-              params: {
-                diffuseTexture: 'test-diffuse',
-                normalTexture: 'test-normal',
-              }
-            });
+        let m = this._renderer.CreateMeshInstance(new Box(), {
+          shader: 'default',
+          params: {
+            diffuseTexture: 'test-diffuse',
+            normalTexture: 'test-normal'
+          }
+        });
         m.SetPosition(x * 4, 0, -y * 4);
-    
+
         this._meshes.push(m);
       }
     }
   }
 
   _RAF() {
-    requestAnimationFrame((t) => {
+    requestAnimationFrame(t => {
       if (this._previousRAF === null) {
         this._previousRAF = t;
       }
@@ -1447,16 +1645,12 @@ class LightPrepassDemo {
     for (let l of this._lights) {
       l.acc += timeElapsed * 0.001 * l.accSpeed;
 
-      l.light.SetPosition(
-          l.position[0] + 10 * Math.cos(l.acc),
-          l.position[1],
-          l.position[2] + 10 * Math.sin(l.acc));
+      l.light.SetPosition(l.position[0] + 10 * Math.cos(l.acc), l.position[1], l.position[2] + 10 * Math.sin(l.acc));
     }
 
     this._renderer.Render(timeElapsedS);
   }
 }
-
 
 let _APP = null;
 
