@@ -4,7 +4,7 @@ import roughWetNormal from './resources/rough-wet-cobble-normal-1024.jpg';
 import wornBumpyRockAlbedo from './resources/worn-bumpy-rock-albedo-1024.png';
 import wornBumpyRockNormal from './resources/worn-bumpy-rock-normal-1024.jpg';
 
-let GL: any = null;
+let GL: WebGL2RenderingContext = null;
 
 const _OPAQUE_VS = `#version 300 es
 precision highp float;
@@ -244,23 +244,58 @@ void main(void) {
 }
 `;
 
-class Shader {
-  private _defines: any;
-  private _vsSource: any;
-  private _fsSource: any;
-  private _vsProgram: any;
-  private _fsProgram: any;
-  private _shader: any;
-  private attribs: any;
-  private uniforms: any;
+interface ShaderUniform {
+  type: string;
+  location: WebGLUniformLocation;
+  value?: any;
+}
 
-  constructor(vsrc: string, fsrc: string, defines?: any) {
+interface ShaderUniforms {
+  projectionMatrix: ShaderUniform;
+  modelViewMatrix: ShaderUniform;
+  modelMatrix: ShaderUniform;
+  normalMatrix: ShaderUniform;
+  resolution: ShaderUniform;
+  lightColour: ShaderUniform;
+  lightDirection: ShaderUniform;
+  lightPosition: ShaderUniform;
+  lightAttenuation: ShaderUniform;
+  cameraPosition: ShaderUniform;
+  diffuseTexture: ShaderUniform;
+  normalTexture: ShaderUniform;
+  gBuffer_Light: ShaderUniform;
+  gBuffer_Colour: ShaderUniform;
+  gBuffer_Normal: ShaderUniform;
+  gBuffer_Position: ShaderUniform;
+  gQuadTexture: ShaderUniform;
+}
+
+interface ShaderAttributes {
+  positions: number;
+  normals: number;
+  tangents: number;
+  uvs: number;
+  colours: number;
+}
+
+class Shader {
+  public attribs: ShaderAttributes;
+  public uniforms: ShaderUniforms;
+
+  private _defines: string[];
+  private _vsSource: string;
+  private _fsSource: string;
+  private _vsProgram: WebGLShader;
+  private _fsProgram: WebGLShader;
+  private _shader: WebGLProgram;
+
+  constructor(vsrc: string, fsrc: string, defines?: string[]) {
     defines = defines || [];
 
     this._Init(vsrc, fsrc, defines);
   }
 
-  _Init(vsrc: string, fsrc: string, defines: any) {
+  _Init(vsrc: string, fsrc: string, defines: string[]) {
     this._defines = defines;
 
     vsrc = this._ModifySourceWithDefines(vsrc, defines);
@@ -360,17 +395,17 @@ class Shader {
     };
   }
 
-  _ModifySourceWithDefines(src: any, defines: any) {
+  _ModifySourceWithDefines(src: string, defines: string[]) {
     const lines = src.split('\n');
 
-    const defineStrings = defines.map((d: any) => '#define ' + d);
+    const defineStrings = defines.map(d => '#define ' + d);
 
-    lines.splice(3, 0, defineStrings);
+    lines.splice(3, 0, ...defineStrings);
 
     return lines.join('\n');
   }
 
-  _Load(type, source) {
+  _Load(type: number, source: string): WebGLShader {
     const shader = GL.createShader(type);
 
     GL.shaderSource(shader, source);
@@ -392,13 +427,13 @@ class Shader {
 }
 
 class ShaderInstance {
-  private _shaderData;
-  private _uniforms;
-  private _attribs;
+  private _shaderData: Shader;
+  private _uniforms: ShaderUniforms;
+  private _attribs: ShaderAttributes;
 
-  constructor(shader) {
+  constructor(shader: Shader) {
     this._shaderData = shader;
-    this._uniforms = {};
+    this._uniforms = {} as any;
     for (let k in shader.uniforms) {
       this._uniforms[k] = {
         location: shader.uniforms[k].location,
